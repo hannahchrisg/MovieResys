@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MovieIQ — Reddit-Powered Recommendations</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            color: #eee;
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: #0a0a0a;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Atmospheric overlay */
+        #bg-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* All content sits above overlay */
+        header, form, .loading, .genre-title, .movies-grid, .empty {
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 50px 20px 30px;
+        }
+        header h1 {
+            font-size: 48px;
+            color: #ff6b35;
+            letter-spacing: 2px;
+        }
+        header p {
+            color: #888;
+            margin-top: 8px;
+            font-size: 16px;
+        }
+       .search-box {
+    display: flex;
+    justify-content: center;
+    margin: 20px auto 40px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.search-box input,
+.search-box select {
+    padding: 14px 24px;
+    border-radius: 30px;
+    border: 2px solid #333;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 16px;
+    width: 220px;
+    outline: none;
+}
+
+.search-box input:focus,
+.search-box select:focus {
+    border-color: #ff6b35;
+}
+
+.search-box button {
+    padding: 14px 28px;
+    background: #ff6b35;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.search-box button:hover {
+    background: #e55a25;
+}
+        .search-box button:hover { background: #e55a25; }
+        .loading {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .genre-title {
+            text-align: center;
+            font-size: 22px;
+            color: #ff6b35;
+            margin-bottom: 30px;
+            text-transform: capitalize;
+        }
+        .movies-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            padding: 0 20px 60px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .movie-card {
+            background: #151515ee;
+            border-radius: 16px;
+            width: 340px;
+            overflow: hidden;
+            border: 1px solid #222;
+            transition: transform 0.2s;
+        }
+        .movie-card:hover { transform: translateY(-4px); }
+        .movie-card img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+        }
+        .card-body { padding: 20px; }
+        .card-body h2 {
+            font-size: 18px;
+            margin-bottom: 6px;
+            color: #fff;
+        }
+        .score {
+            font-size: 18px;
+            color: #ff6b35;
+            margin-bottom: 16px;
+            font-weight: bold;
+        }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .tab {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 18px;
+            cursor: pointer;
+            border: 1px solid #333;
+            background: transparent;
+            color: #888;
+        }
+        .tab.active-good {
+            background: #0d2e1a;
+            border-color: #2ecc71;
+            color: #2ecc71;
+        }
+        .tab.active-bad {
+            background: #2e0d0d;
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+        .review-list { display: none; }
+        .review-list.visible { display: block; }
+        .review-list ul { list-style: none; padding: 0; }
+        .review-list ul li {
+            font-size: 15px;
+            color: #bbb;
+            padding: 6px 0;
+            border-bottom: 1px solid #1e1e1e;
+            line-height: 1.5;
+        }
+        .review-list ul li::before {
+            content: "• ";
+            color: #ff6b35;
+        }
+        .snippet-section { margin-top: 14px; }
+        .snippet-label {
+            font-size: 16px;
+            letter-spacing: 2px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .snippet-good {
+            background: #0d2e1a;
+            border-left: 3px solid #2ecc71;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            font-size: 16px;
+            color: #aaa;
+            line-height: 1.6;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+        }
+        .snippet-bad {
+            background: #2e0d0d;
+            border-left: 3px solid #e74c3c;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            font-size: 16px;
+            color: #aaa;
+            line-height: 1.6;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+        }
+        .sources {
+            margin-top: 14px;
+            font-size: 15px;
+            color: #555;
+        }
+        .sources a {
+            color: #4a90d9;
+            display: block;
+            margin-top: 4px;
+            text-decoration: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sources a:hover { color: #ff6b35; }
+        .empty {
+            text-align: center;
+            color: #666;
+            padding: 60px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-overlay"></canvas>
+
+    <header>
+        <h1>🎬 MovieIQ</h1>
+        <p>Reddit-powered movie recommendations with real opinions</p>
+    </header>
+
+    <form class="search-box" method="POST" action="/recommend" onsubmit="showLoading()">
+    <input type="text" name="genre"
+           placeholder="Enter a genre e.g. Horror, Action, Comedy"
+           value="{{ genre or '' }}" required />
+    <button type="submit">Find Movies</button>
+</form>
+
+    <div class="loading" id="loading" style="display:none">
+        ⏳ Searching Reddit and analysing reviews... this takes ~30 seconds
+    </div>
+
+    {% if movies is not none %}
+        {% if movies|length == 0 %}
+            <div class="empty">No movies found for "{{ genre }}" — try another genre!</div>
+        {% else %}
+            <div class="genre-title">Top {{ genre }} Movies — Reddit Says:</div>
+            <div class="movies-grid">
+                {% for movie in movies %}
+                <div class="movie-card">
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" />
+                    <div class="card-body">
+                        <h2>{{ movie.title }}</h2>
+                        <div class="score">⭐ Score: {{ movie.score }}</div>
+                        <div class="tabs">
+                            <button class="tab active-good" onclick="showTab(this, 'good-{{ loop.index }}')">
+                                👍 Loves
+                            </button>
+                            <button class="tab" onclick="showTab(this, 'bad-{{ loop.index }}')">
+                                👎 Dislikes
+                            </button>
+                        </div>
+                        <div class="review-list visible" id="good-{{ loop.index }}">
+                            <ul>
+                                {% for point in movie.good %}
+                                <li>{{ point }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="review-list" id="bad-{{ loop.index }}">
+                            <ul>
+                                {% for point in movie.bad %}
+                                <li>{{ point }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        {% if movie.pos_snippets or movie.neg_snippets %}
+                        <div class="snippet-section">
+                            <div class="snippet-label">✂️ From Reddit</div>
+                            {% for s in movie.pos_snippets %}
+                            <div class="snippet-good">👍 "{{ s }}"</div>
+                            {% endfor %}
+                            {% for s in movie.neg_snippets %}
+                            <div class="snippet-bad">👎 "{{ s }}"</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <div class="sources">
+                            Reddit sources:
+                            {% for src in movie.sources %}
+                            <a href="{{ src }}" target="_blank">{{ src }}</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <script>
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function showTab(btn, id) {
+            const card = btn.closest('.movie-card');
+            card.querySelectorAll('.review-list').forEach(el => el.classList.remove('visible'));
+            card.querySelectorAll('.tab').forEach(el => el.classList.remove('active-good', 'active-bad'));
+            document.getElementById(id).classList.add('visible');
+            if (id.startsWith('good')) btn.classList.add('active-good');
+            else btn.classList.add('active-bad');
+        }
+
+        // ---- Atmospheric Canvas Background ----
+        const genre = "{{ genre or '' }}".toLowerCase().trim();
+
+        const themes = {
+    "horror":           { bg: '#1a0030', colors: ['rgba(120,0,180,0.5)', 'rgba(80,0,120,0.4)', 'rgba(60,0,90,0.5)'] },
+    "action":           { bg: '#2a0000', colors: ['rgba(180,20,0,0.5)', 'rgba(140,10,0,0.4)', 'rgba(160,15,0,0.5)'] },
+    "comedy":           { bg: '#1a1800', colors: ['rgba(160,140,0,0.4)', 'rgba(120,100,0,0.3)'] },
+    "romance":          { bg: '#250015', colors: ['rgba(180,0,80,0.5)', 'rgba(140,0,60,0.4)', 'rgba(100,0,40,0.4)'] },
+    "science fiction":  { bg: '#000f25', colors: ['rgba(0,80,200,0.5)', 'rgba(0,50,150,0.4)', 'rgba(0,60,180,0.4)'] },
+    "thriller":         { bg: '#0d0d0d', colors: ['rgba(80,80,80,0.4)', 'rgba(50,50,50,0.3)'] },
+    "adventure":        { bg: '#061a00', colors: ['rgba(20,120,0,0.5)', 'rgba(10,80,0,0.4)', 'rgba(15,100,0,0.4)'] },
+    "fantasy":          { bg: '#0d0025', colors: ['rgba(80,0,200,0.5)', 'rgba(50,0,150,0.4)', 'rgba(60,0,120,0.4)'] },
+    "animation":        { bg: '#001f1e', colors: ['rgba(0,160,150,0.4)', 'rgba(0,120,110,0.3)'] },
+    "crime":            { bg: '#0f0f00', colors: ['rgba(100,100,0,0.4)', 'rgba(70,70,0,0.3)'] },
+    "drama":            { bg: '#05101f', colors: ['rgba(20,60,150,0.4)', 'rgba(10,40,100,0.3)'] },
+    "war":              { bg: '#120e00', colors: ['rgba(100,70,0,0.4)', 'rgba(70,50,0,0.3)'] },
+    "mystery":          { bg: '#000a1a', colors: ['rgba(0,60,150,0.4)', 'rgba(0,40,100,0.3)'] },
+    "western":          { bg: '#1a0800', colors: ['rgba(140,60,0,0.5)', 'rgba(100,40,0,0.4)'] },
+    "history":          { bg: '#1a1400', colors: ['rgba(120,90,0,0.5)', 'rgba(80,60,0,0.4)'] },
+    "music":            { bg: '#150020', colors: ['rgba(120,0,180,0.5)', 'rgba(80,0,120,0.4)'] },
+    "family":           { bg: '#001a0f', colors: ['rgba(0,120,70,0.4)', 'rgba(0,80,50,0.3)'] },
+};
+
+        const theme = themes[genre] || { bg: '#0a0a0a', colors: ['#1a1a1a55'] };
+        document.body.style.background = theme.bg;
+
+        const canvas = document.getElementById('bg-overlay');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        const blobs = theme.colors.map((color, i) => ({
+            color,
+            x: Math.random(),
+            y: Math.random(),
+            phase: i * 1.2,
+        }));
+
+        let t = 0;
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            blobs.forEach(blob => {
+                const pulse = Math.sin(t + blob.phase) * 0.06;
+                const x = canvas.width * (blob.x + Math.sin(t * 0.3 + blob.phase) * 0.05);
+                const y = canvas.height * (blob.y + Math.cos(t * 0.2 + blob.phase) * 0.05);
+                const r = Math.min(canvas.width, canvas.height) * (0.55 + pulse);
+                const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+                grad.addColorStop(0, blob.color);
+                grad.addColorStop(1, 'transparent');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            });
+            t += 0.008;
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
