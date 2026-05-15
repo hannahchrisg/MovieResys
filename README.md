@@ -5,10 +5,8 @@ MovieResys is an AI-powered movie recommendation platform that combines machine 
 The project integrates TMDB movie datasets, Tavily Search API, Groq LLMs, Flask, and a cinematic frontend interface to create an interactive recommendation experience with animated genre-based visuals and AI-generated review summaries.
 
 1. Features
-1.1 Genre-Based Recommendations
-
+Genre-Based Recommendations
 Users can search movies by genres such as:
-
 Horror
 Action
 Comedy
@@ -19,26 +17,25 @@ Science Fiction
 Mystery
 Drama
 Adventure
-1.2 Reddit-Powered Movie Analysis
 
+Reddit-Powered Movie Analysis
 MovieIQ searches Reddit discussions using Tavily Search API to collect:
-
 Real user reviews
 Viewer discussions
 Audience opinions
 Watch recommendations
 Positive and negative reactions
-1.3 AI-Powered Review Summarization
+AI-Powered Review Summarization
 
 Using Groq LLMs, the system generates:
-
 Overall audience verdict
 What viewers liked
 What viewers disliked
 Positive Reddit snippets
 Negative Reddit snippets
 Viewer recommendation summaries
-1.4 Cinematic Frontend Interface
+
+Cinematic Frontend Interface
 
 The frontend includes:
 
